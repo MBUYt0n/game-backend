@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package server;
+
+option go_package = "game-backend/protos";
+
+message StateIntentMessage {
+    string player_id = 1;
+    int32 dx = 2;
+    int32 dy = 3;
+}
+
+message PlayerState {
+    string player_id = 1;
+    int32 x = 2;
+    int32 y = 3;
+}
+
+message ClientGameJoin {
+    string player_id = 1;
+}
+
+message ServerGameJoin {
+  PlayerState player_state = 1;
+}
+
+message ServerGameExit {
+    string player_id = 1;
+}
+
+message ClientGameExit {}
+
+message ClientEvent {
+    oneof event {
+      StateIntentMessage intent_message = 1;
+      ClientGameJoin game_join = 2;
+      ClientGameExit game_exit = 3;
+    }
+}
+
+message StateSnapshot {
+    repeated PlayerState player_state = 1;
+}
+
+message ServerEvent {
+  oneof event {
+    PlayerState player_state = 1;
+    ServerGameJoin game_join = 2;
+    ServerGameExit game_exit = 3;
+    StateSnapshot snapshot = 4;
+  }
+}
+
+
+service GameService {
+    rpc Connect(stream ClientEvent) returns (stream ServerEvent);
+}
+
+
+
