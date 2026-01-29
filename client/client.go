@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"game-backend/protos"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"math/rand"
 	"time"
+	"sync"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type GameClient struct {
@@ -80,8 +82,23 @@ func ClientGameLeave() *protos.ClientEvent {
 	}
 }
 
-// Example usage
+
 func main() {
+    var wg sync.WaitGroup
+    numClients := 5
+
+    for i := 0; i < numClients; i++ {
+        wg.Add(1)
+        go func(clientId int) {
+            defer wg.Done()
+            runClient(clientId)
+        }(i)
+    }
+
+    wg.Wait()
+}
+// Example usage
+func runClient(id int) {
 	client, err := NewGameClient("localhost:50051")
 	if err != nil {
 		log.Fatalf("Could not create client: %v", err)
@@ -104,8 +121,7 @@ func main() {
 			log.Printf("Received event: %v", event)
 		}
 	}()
-
-	event := ClientGameJoin("1")
+	event := ClientGameJoin(fmt.Sprintf("%d", id))
 	err = client.SendEvent(event)
 	if err != nil {
 		log.Printf("Error sending event: %v", err)
@@ -117,7 +133,7 @@ func main() {
 	for i := 0; i < 5; i++ {
 		x = rand.Intn(3)
 		y = rand.Intn(3)
-		event := ClientGameMove("1", int32(x), int32(y))
+		event := ClientGameMove(fmt.Sprintf("%d", id), int32(x), int32(y))
 		err = client.SendEvent(event)
 		if err != nil {
 			log.Printf("Error sending event: %v", err)
