@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"game-backend/protos"
-	"log"
-	"math/rand"
-	"time"
-	"sync"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"log"
+	"math/rand"
+	"sync"
+	"time"
 )
 
 type GameClient struct {
@@ -82,22 +82,21 @@ func ClientGameLeave() *protos.ClientEvent {
 	}
 }
 
-
 func main() {
-    var wg sync.WaitGroup
-    numClients := 5
+	var wg sync.WaitGroup
+	numClients := 5
 
-    for i := 0; i < numClients; i++ {
-        wg.Add(1)
-        go func(clientId int) {
-            defer wg.Done()
-            runClient(clientId)
-        }(i)
-    }
+	for i := 0; i < numClients; i++ {
+		wg.Add(1)
+		go func(clientId int) {
+			defer wg.Done()
+			runClient(clientId)
+		}(i)
+	}
 
-    wg.Wait()
+	wg.Wait()
 }
-// Example usage
+
 func runClient(id int) {
 	client, err := NewGameClient("localhost:50051")
 	if err != nil {
@@ -110,7 +109,6 @@ func runClient(id int) {
 		log.Fatalf("Could not connect to server: %v", err)
 	}
 
-	// Example of sending and receiving events
 	go func() {
 		for {
 			event, err := client.ReceiveEvent()
@@ -146,5 +144,5 @@ func runClient(id int) {
 		log.Printf("Error sending event: %v", err)
 	}
 
-	time.Sleep(2 * time.Second) // Wait to receive any final events
+	time.Sleep(2 * time.Second)
 }
