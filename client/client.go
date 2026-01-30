@@ -127,7 +127,7 @@ func handleServerEvent(event *protos.ServerEvent, pp *PlayerPositions) {
 	displayGameState(pp)
 }
 
-func runClient(id int) {
+func runClientCli(id int) {
 	client, err := NewGameClient("localhost:50051")
 	if err != nil {
 		log.Fatalf("Could not create client: %v", err)
@@ -193,6 +193,55 @@ func runClient(id int) {
 	}
 
 	time.Sleep(2 * time.Second)
+}
+
+func runClient(id int) {
+    client, err := NewGameClient("localhost:50051")
+    if err != nil {
+        log.Fatalf("Could not create client: %v", err)
+    }
+    defer client.Close()
+
+    err = client.Connect()
+    if err != nil {
+        log.Fatalf("Could not connect to server: %v", err)
+    }
+    pp := &PlayerPositions{}
+    pp.Positions = make(map[string][2]int32)
+
+    go func() {
+        for {
+            event, err := client.ReceiveEvent()
+            if err != nil {
+                log.Printf("Error receiving event: %v", err)
+                return
+            }
+            handleServerEvent(event, pp)
+
+        }
+    }()
+    event := ClientGameJoin(fmt.Sprintf("%d", id))
+    err = client.SendEvent(event)
+    if err != nil {
+        log.Printf("Error sending event: %v", err)
+    }
+
+    go func() {
+        for i := 0; i < 1000; i++ { // Send 1000 moves, adjust as needed
+            dx := int32(rand.Intn(3) - 1) // Random -1, 0, 1
+            dy := int32(rand.Intn(3) - 1)
+            event := ClientGameMove(fmt.Sprintf("%d", id), dx, dy)
+            err := client.SendEvent(event)
+            if err != nil {
+                log.Printf("Error sending move event: %v", err)
+            }
+            time.Sleep(10 * time.Millisecond)
+        }
+        event := ClientGameLeave()
+        client.SendEvent(event)
+    }()
+
+    time.Sleep(15 * time.Second) // Wait for simulation to complete
 }
 
 func main() {
