@@ -1,7 +1,6 @@
 package game_state
 
 import (
-	"fmt"
 	"game-backend/protos"
 	"math/rand"
 )
@@ -92,7 +91,6 @@ func (room *Room) addPlayerToGameState(playerConn *PlayerConn) *protos.ServerEve
 		X:        int32(rand.Intn(100)),
 		Y:        int32(rand.Intn(100)),
 	}
-	fmt.Println("Player joined")
 	room.State[playerConn.Id] = &playerState
 	snapshot := getGameState(room)
 	select {
@@ -100,7 +98,6 @@ func (room *Room) addPlayerToGameState(playerConn *PlayerConn) *protos.ServerEve
 	default:
 	}
 
-	fmt.Println("Snapshot sent")
 	joinEvent := protos.ServerGameJoin{
 		PlayerState: &playerState,
 	}
