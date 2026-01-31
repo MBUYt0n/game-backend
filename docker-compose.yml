@@ -15,19 +15,22 @@ services:
       dockerfile: client/Dockerfile
     environment:
       - SERVER_ADDRESS=server:50051
-    depends_on:
-      - matchmaking
+    # depends_on:
+    #   - matchmaking
     networks:
       - game-network
+    extra_hosts:
+      - "matchmaking.local:host-gateway"
 
-  matchmaking:
-    build:
-      context: .
-      dockerfile: matchmaking/Dockerfile
-    ports:
-      - "50052:50052"
-    networks:
-      - game-network
+
+  # matchmaking:
+  #   build:
+  #     context: .
+  #     dockerfile: matchmaking/Dockerfile
+  #   ports:
+  #     - "50052:50052"
+  #   networks:
+  #     - game-network
 
 networks:
   game-network:

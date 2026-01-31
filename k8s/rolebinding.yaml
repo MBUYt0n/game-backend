@@ -2,11 +2,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: matchmaking-rolebinding
-  namespace: default  # Adjust namespace as needed
+  namespace: game-backend  # Adjust namespace as needed
 subjects:
 - kind: ServiceAccount
   name: matchmaking-sa
-  namespace: default  # Adjust namespace as needed
+  namespace: game-backend  # Adjust namespace as needed
 roleRef:
   kind: Role
   name: matchmaking-role

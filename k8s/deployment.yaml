@@ -18,6 +18,6 @@ spec:
       containers:
       - name: matchmaking
         image: game-backend_matchmaking:latest 
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 50052
-        command: ["./matchmaking"]

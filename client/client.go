@@ -269,7 +269,7 @@ func runClient(address string, id string) {
 }
 
 func Matchmaking() (string, string) {
-	conn, err := grpc.NewClient("matchmaking:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("matchmaking.local:80", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Could not connect to matchmaking server: %v", err)
 	}
