@@ -1,0 +1,9 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: matchmaking-role
+  namespace: default  # Adjust namespace as needed
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["create", "get", "list", "delete", "patch"]  # Permissions to manage server pods
