@@ -1,24 +1,22 @@
 version: '3.8'
 services:
-  server:
-    build:
-      context: .
-      dockerfile: server/Dockerfile
-    ports:
-      - "50051:50051"
-    networks:
-      - game-network
+  # server:
+  #   build:
+  #     context: .
+  #     dockerfile: server/Dockerfile
+  #   # ports:
+  #   #   - "50051:50051"
+  #   network_mode: 
+  #     "host"
 
   client:
     build:
       context: .
       dockerfile: client/Dockerfile
-    environment:
-      - SERVER_ADDRESS=server:50051
     # depends_on:
     #   - matchmaking
-    networks:
-      - game-network
+    network_mode: 
+      "host"
     extra_hosts:
       - "matchmaking.local:host-gateway"
 
@@ -27,11 +25,8 @@ services:
   #   build:
   #     context: .
   #     dockerfile: matchmaking/Dockerfile
-  #   ports:
-  #     - "50052:50052"
-  #   networks:
-  #     - game-network
+  #   # ports:
+  #   #   - "50052:50052"
+  #   network_mode: 
+  #     "host"
 
-networks:
-  game-network:
-    driver: bridge

@@ -18,14 +18,14 @@ type GameServiceServer struct {
 }
 
 func main() {
-	lis, err := net.Listen("tcp", ":50053")
+	lis, err := net.Listen("tcp", ":7777")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	room = game_state.NewRoom()
 	go room.Run()
-	log.Println("Server is running on port :50053")
+	log.Println("Server is running on port :7777")
 
 	grpcServer := grpc.NewServer()
 	protos.RegisterGameServiceServer(grpcServer, &GameServiceServer{})

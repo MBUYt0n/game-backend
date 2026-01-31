@@ -21,7 +21,7 @@ type Player struct {
 
 type Room struct {
 	players []Player
-	port    int
+	address    string
 }
 
 const queueSize = 4
@@ -65,7 +65,7 @@ func (s *MatchMakingServiceServer) Connect(
 		log.Printf("Player %s assigned to room: ", player.id)
 		return &protos.MatchMakingResponse{
 			PlayerId:      player.id,
-			ServerAddress: fmt.Sprintf("server:%d", room.port),
+			ServerAddress: room.address,
 		}, nil
 
 	case <-ctx.Done():
@@ -75,25 +75,52 @@ func (s *MatchMakingServiceServer) Connect(
 }
 
 func matchmaker() {
+	clientset, err := kubeClient()
+	if err != nil {
+		log.Fatalf("kube client error: %v", err)
+	}
+
 	var queue []Player
-	var port = 50053
+
 	for player := range joinQueue {
 		queue = append(queue, player)
 
 		if len(queue) >= queueSize {
+			roomID := fmt.Sprintf("%d", rand.Intn(1000000))
 			roomPlayers := queue[:queueSize]
 			queue = queue[queueSize:]
 
-			room := Room{players: roomPlayers, port: port}
-			port++
-			log.Printf("Created room on port %d with players: %v", room.port, room.players)
-			for _, p := range roomPlayers {
-				select {
-				case p.roomChan <- room:
-				default:
-				}
+			log.Printf("Creating game server for room %s", roomID)
 
+			err := createGameServerPod(clientset, roomID)
+			if err != nil {
+				log.Printf("pod error: %v", err)
+				continue
+			}
+
+			nodePort, err := createNodePortService(clientset, roomID)
+			if err != nil {
+				log.Printf("svc error: %v", err)
+				continue
+			}
+
+			err = waitForPodReady(clientset, "game-server-"+roomID)
+			if err != nil {
+				log.Printf("pod not ready: %v", err)
+				continue
+			}
+
+			address := fmt.Sprintf("%s:%d", nodeAddress(), nodePort)
+
+			room := Room{
+				address: address,
+			}
+
+			for _, p := range roomPlayers {
+				p.roomChan <- room
+				log.Printf("Assigned player %s to %s", p.id, address)
 			}
 		}
 	}
 }
+

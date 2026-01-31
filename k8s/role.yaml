@@ -2,8 +2,16 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: matchmaking-role
-  namespace: game-backend  # Adjust namespace as needed
+  namespace: game-backend
 rules:
 - apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["create", "get", "list", "delete", "patch", "watch"]  # Permissions to manage server pods
+  resources:
+    - pods
+    - services
+  verbs:
+    - create
+    - get
+    - list
+    - delete
+    - patch
+    - watch

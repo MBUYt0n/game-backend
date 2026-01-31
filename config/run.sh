@@ -4,6 +4,7 @@ set -e
 NAMESPACE="game-backend"
 IMAGE="game-backend_matchmaking:latest"
 K8S_DIR="../k8s"
+IMAGE2="game-backend_server:latest"
 
 kind create cluster --config kind-config.yaml
 
@@ -28,6 +29,8 @@ done
 kubectl create namespace "$NAMESPACE"
 
 kind load docker-image "$IMAGE"
+
+kind load docker-image "$IMAGE2"
 
 kubectl apply -f "$K8S_DIR" -n "$NAMESPACE"
 
