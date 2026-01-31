@@ -18,7 +18,7 @@ type GameServiceServer struct {
 }
 
 func main() {
-	lis, err := net.Listen("tcp", ":7777")
+	lis, err := net.Listen("tcp4", ":7777")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}

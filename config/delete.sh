@@ -8,8 +8,9 @@ kubectl delete -f "$K8S_DIR" -n "$NAMESPACE" --ignore-not-found
 
 kubectl delete namespace "$NAMESPACE" --ignore-not-found
 
-kubectl delete -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml --ignore-not-found
+minikube image rm "game-backend_matchmaking:latest"
+minikube image rm "game-backend_server:latest"
 
-kind delete cluster
+minikube delete
 
 

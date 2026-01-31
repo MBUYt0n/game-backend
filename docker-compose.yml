@@ -18,7 +18,7 @@ services:
     network_mode: 
       "host"
     extra_hosts:
-      - "matchmaking.local:host-gateway"
+    - "matchmaking.local:192.168.49.2"
 
 
   # matchmaking:

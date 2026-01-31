@@ -127,5 +127,5 @@ func waitForPodReady(
 }
 
 func nodeAddress() string {
-	return "127.0.0.1"
+	return "matchmaking.local"
 }
