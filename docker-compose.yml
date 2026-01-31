@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "50051:50051"
+    networks:
+      - game-network
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    environment:
+      - SERVER_ADDRESS=server:50051
+    depends_on:
+      - server
+    networks:
+      - game-network
+
+networks:
+  game-network:
+    driver: bridge

@@ -128,7 +128,8 @@ func handleServerEvent(event *protos.ServerEvent, pp *PlayerPositions) {
 }
 
 func runClientCli(id int) {
-	client, err := NewGameClient("localhost:50051")
+	address := os.Getenv("SERVER_ADDRESS")
+	client, err := NewGameClient(address)
 	if err != nil {
 		log.Fatalf("Could not create client: %v", err)
 	}
@@ -196,7 +197,8 @@ func runClientCli(id int) {
 }
 
 func runClient(id int) {
-    client, err := NewGameClient("localhost:50051")
+	address := os.Getenv("SERVER_ADDRESS")
+    client, err := NewGameClient(address)
     if err != nil {
         log.Fatalf("Could not create client: %v", err)
     }
@@ -205,9 +207,34 @@ func runClient(id int) {
     err = client.Connect()
     if err != nil {
         log.Fatalf("Could not connect to server: %v", err)
-    }
+    } else {
+		log.Printf("Client %d connected to server at %s", id, address)
+	}
+	
     pp := &PlayerPositions{}
     pp.Positions = make(map[string][2]int32)
+
+    event := ClientGameJoin(fmt.Sprintf("%d", id))
+    err = client.SendEvent(event)
+    if err != nil {
+        log.Printf("Error sending event: %v", err)
+    }
+
+	    // Wait for join acknowledgement
+    ackReceived := false
+    for !ackReceived {
+        event, err := client.ReceiveEvent()
+        if err != nil {
+            log.Fatalf("Error receiving join ack: %v", err)
+        }
+        if joinEvent, ok := event.Event.(*protos.ServerEvent_GameJoin); ok && joinEvent.GameJoin.PlayerState.PlayerId == fmt.Sprintf("%d", id) {
+            log.Printf("Join acknowledged for player %d", id)
+            handleServerEvent(event, pp) // Process the ack
+            ackReceived = true
+        } else if _, ok := event.Event.(*protos.ServerEvent_Snapshot); ok {
+            handleServerEvent(event, pp)
+        }
+    }
 
     go func() {
         for {
@@ -217,17 +244,11 @@ func runClient(id int) {
                 return
             }
             handleServerEvent(event, pp)
-
         }
     }()
-    event := ClientGameJoin(fmt.Sprintf("%d", id))
-    err = client.SendEvent(event)
-    if err != nil {
-        log.Printf("Error sending event: %v", err)
-    }
 
     go func() {
-        for i := 0; i < 1000; i++ { // Send 1000 moves, adjust as needed
+        for range 1000 { // Send 1000 moves, adjust as needed
             dx := int32(rand.Intn(3) - 1) // Random -1, 0, 1
             dy := int32(rand.Intn(3) - 1)
             event := ClientGameMove(fmt.Sprintf("%d", id), dx, dy)
