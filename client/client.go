@@ -5,14 +5,15 @@ import (
 	"context"
 	"fmt"
 	"game-backend/protos"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type GameClient struct {
@@ -97,6 +98,10 @@ func ClientGameLeave() *protos.ClientEvent {
 	}
 }
 
+func clientMatchMakingRequest() *protos.ClientQueueJoin {
+	return &protos.ClientQueueJoin{}
+}
+
 func displayGameState(pp *PlayerPositions) {
 	fmt.Println("Current Player Positions:")
 	for playerId, pos := range pp.Positions {
@@ -127,8 +132,7 @@ func handleServerEvent(event *protos.ServerEvent, pp *PlayerPositions) {
 	displayGameState(pp)
 }
 
-func runClientCli(id int) {
-	address := os.Getenv("SERVER_ADDRESS")
+func runClientCli(address string, id string) {
 	client, err := NewGameClient(address)
 	if err != nil {
 		log.Fatalf("Could not create client: %v", err)
@@ -154,7 +158,7 @@ func runClientCli(id int) {
 
 		}
 	}()
-	event := ClientGameJoin(fmt.Sprintf("%d", id))
+	event := ClientGameJoin(id)
 	err = client.SendEvent(event)
 	if err != nil {
 		log.Printf("Error sending event: %v", err)
@@ -176,7 +180,7 @@ func runClientCli(id int) {
 				fmt.Println("Invalid move command. Use 'move <dx> <dy>'")
 				continue
 			}
-			event = ClientGameMove(fmt.Sprintf("%d", id), int32(dx), int32(dy))
+			event = ClientGameMove(id, int32(dx), int32(dy))
 			err = client.SendEvent(event)
 			if err != nil {
 				log.Printf("Error sending move event: %v", err)
@@ -196,76 +200,95 @@ func runClientCli(id int) {
 	time.Sleep(2 * time.Second)
 }
 
-func runClient(id int) {
-	address := os.Getenv("SERVER_ADDRESS")
-    client, err := NewGameClient(address)
-    if err != nil {
-        log.Fatalf("Could not create client: %v", err)
-    }
-    defer client.Close()
-
-    err = client.Connect()
-    if err != nil {
-        log.Fatalf("Could not connect to server: %v", err)
-    } else {
-		log.Printf("Client %d connected to server at %s", id, address)
+func runClient(address string, id string) {
+	client, err := NewGameClient(address)
+	if err != nil {
+		log.Fatalf("Could not create client: %v", err)
 	}
-	
-    pp := &PlayerPositions{}
-    pp.Positions = make(map[string][2]int32)
+	defer client.Close()
 
-    event := ClientGameJoin(fmt.Sprintf("%d", id))
-    err = client.SendEvent(event)
-    if err != nil {
-        log.Printf("Error sending event: %v", err)
-    }
+	err = client.Connect()
+	if err != nil {
+		log.Fatalf("Could not connect to server: %v", err)
+	} else {
+		log.Printf("Client %s connected to server at %s", id, address)
+	}
 
-	    // Wait for join acknowledgement
-    ackReceived := false
-    for !ackReceived {
-        event, err := client.ReceiveEvent()
-        if err != nil {
-            log.Fatalf("Error receiving join ack: %v", err)
-        }
-        if joinEvent, ok := event.Event.(*protos.ServerEvent_GameJoin); ok && joinEvent.GameJoin.PlayerState.PlayerId == fmt.Sprintf("%d", id) {
-            log.Printf("Join acknowledged for player %d", id)
-            handleServerEvent(event, pp) // Process the ack
-            ackReceived = true
-        } else if _, ok := event.Event.(*protos.ServerEvent_Snapshot); ok {
-            handleServerEvent(event, pp)
-        }
-    }
+	pp := &PlayerPositions{}
+	pp.Positions = make(map[string][2]int32)
 
-    go func() {
-        for {
-            event, err := client.ReceiveEvent()
-            if err != nil {
-                log.Printf("Error receiving event: %v", err)
-                return
-            }
-            handleServerEvent(event, pp)
-        }
-    }()
+	event := ClientGameJoin(id)
+	err = client.SendEvent(event)
+	if err != nil {
+		log.Printf("Error sending event: %v", err)
+	}
 
-    go func() {
-        for range 1000 { // Send 1000 moves, adjust as needed
-            dx := int32(rand.Intn(3) - 1) // Random -1, 0, 1
-            dy := int32(rand.Intn(3) - 1)
-            event := ClientGameMove(fmt.Sprintf("%d", id), dx, dy)
-            err := client.SendEvent(event)
-            if err != nil {
-                log.Printf("Error sending move event: %v", err)
-            }
-            time.Sleep(10 * time.Millisecond)
-        }
-        event := ClientGameLeave()
-        client.SendEvent(event)
-    }()
+	// Wait for join acknowledgement
+	ackReceived := false
+	for !ackReceived {
+		event, err := client.ReceiveEvent()
+		if err != nil {
+			log.Fatalf("Error receiving join ack: %v", err)
+		}
+		if joinEvent, ok := event.Event.(*protos.ServerEvent_GameJoin); ok && joinEvent.GameJoin.PlayerState.PlayerId == id {
+			log.Printf("Join acknowledged for player %s", id)
+			handleServerEvent(event, pp) // Process the ack
+			ackReceived = true
+		} else if _, ok := event.Event.(*protos.ServerEvent_Snapshot); ok {
+			handleServerEvent(event, pp)
+		}
+	}
 
-    time.Sleep(15 * time.Second) // Wait for simulation to complete
+	go func() {
+		for {
+			event, err := client.ReceiveEvent()
+			if err != nil {
+				log.Printf("Error receiving event: %v", err)
+				return
+			}
+			handleServerEvent(event, pp)
+		}
+	}()
+
+	go func() {
+		for range 1000 { // Send 1000 moves, adjust as needed
+			dx := int32(rand.Intn(3) - 1) // Random -1, 0, 1
+			dy := int32(rand.Intn(3) - 1)
+			event := ClientGameMove(id, dx, dy)
+			err := client.SendEvent(event)
+			if err != nil {
+				log.Printf("Error sending move event: %v", err)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		event := ClientGameLeave()
+		client.SendEvent(event)
+	}()
+
+	time.Sleep(15 * time.Second) // Wait for simulation to complete
+}
+
+func Matchmaking() (string, string) {
+	conn, err := grpc.NewClient("matchmaking:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Could not connect to matchmaking server: %v", err)
+	}
+	defer conn.Close()
+
+	client := protos.NewMatchMakingServiceClient(conn)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	resp, err := client.Connect(ctx, clientMatchMakingRequest())
+	if err != nil {
+		log.Fatalf("Matchmaking request failed: %v", err)
+	}
+	log.Printf("Matchmaking response: PlayerId=%s, ServerAddress=%s", resp.PlayerId, resp.ServerAddress)
+	return resp.ServerAddress, resp.PlayerId
 }
 
 func main() {
-	id := rand.Intn(1000)
-	runClient(id)
+	address, id := Matchmaking()
+	log.Printf("Assigned to server %s with player ID %s", address, id)
+	runClient(address, id)
 }

@@ -16,7 +16,16 @@ services:
     environment:
       - SERVER_ADDRESS=server:50051
     depends_on:
-      - server
+      - matchmaking
+    networks:
+      - game-network
+
+  matchmaking:
+    build:
+      context: .
+      dockerfile: matchmaking/Dockerfile
+    ports:
+      - "50052:50052"
     networks:
       - game-network
 

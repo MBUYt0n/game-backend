@@ -51,10 +51,18 @@ message ServerEvent {
   }
 }
 
+message ClientQueueJoin {}
+message MatchMakingResponse {
+    string player_id = 1;
+    string server_address = 2;
+}
+
 
 service GameService {
     rpc Connect(stream ClientEvent) returns (stream ServerEvent);
 }
 
-
+service MatchMakingService {
+    rpc Connect(ClientQueueJoin) returns (MatchMakingResponse);
+}
 

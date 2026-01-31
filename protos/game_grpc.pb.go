@@ -113,3 +113,105 @@ var GameService_ServiceDesc = grpc.ServiceDesc{
 	},
 	Metadata: "protos/game.proto",
 }
+
+const (
+	MatchMakingService_Connect_FullMethodName = "/server.MatchMakingService/Connect"
+)
+
+// MatchMakingServiceClient is the client API for MatchMakingService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type MatchMakingServiceClient interface {
+	Connect(ctx context.Context, in *ClientQueueJoin, opts ...grpc.CallOption) (*MatchMakingResponse, error)
+}
+
+type matchMakingServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewMatchMakingServiceClient(cc grpc.ClientConnInterface) MatchMakingServiceClient {
+	return &matchMakingServiceClient{cc}
+}
+
+func (c *matchMakingServiceClient) Connect(ctx context.Context, in *ClientQueueJoin, opts ...grpc.CallOption) (*MatchMakingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MatchMakingResponse)
+	err := c.cc.Invoke(ctx, MatchMakingService_Connect_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// MatchMakingServiceServer is the server API for MatchMakingService service.
+// All implementations must embed UnimplementedMatchMakingServiceServer
+// for forward compatibility.
+type MatchMakingServiceServer interface {
+	Connect(context.Context, *ClientQueueJoin) (*MatchMakingResponse, error)
+	mustEmbedUnimplementedMatchMakingServiceServer()
+}
+
+// UnimplementedMatchMakingServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedMatchMakingServiceServer struct{}
+
+func (UnimplementedMatchMakingServiceServer) Connect(context.Context, *ClientQueueJoin) (*MatchMakingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Connect not implemented")
+}
+func (UnimplementedMatchMakingServiceServer) mustEmbedUnimplementedMatchMakingServiceServer() {}
+func (UnimplementedMatchMakingServiceServer) testEmbeddedByValue()                            {}
+
+// UnsafeMatchMakingServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MatchMakingServiceServer will
+// result in compilation errors.
+type UnsafeMatchMakingServiceServer interface {
+	mustEmbedUnimplementedMatchMakingServiceServer()
+}
+
+func RegisterMatchMakingServiceServer(s grpc.ServiceRegistrar, srv MatchMakingServiceServer) {
+	// If the following call panics, it indicates UnimplementedMatchMakingServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&MatchMakingService_ServiceDesc, srv)
+}
+
+func _MatchMakingService_Connect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClientQueueJoin)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MatchMakingServiceServer).Connect(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MatchMakingService_Connect_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MatchMakingServiceServer).Connect(ctx, req.(*ClientQueueJoin))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// MatchMakingService_ServiceDesc is the grpc.ServiceDesc for MatchMakingService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var MatchMakingService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "server.MatchMakingService",
+	HandlerType: (*MatchMakingServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Connect",
+			Handler:    _MatchMakingService_Connect_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "protos/game.proto",
+}

@@ -565,6 +565,94 @@ func (*ServerEvent_GameExit) isServerEvent_Event() {}
 
 func (*ServerEvent_Snapshot) isServerEvent_Event() {}
 
+type ClientQueueJoin struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientQueueJoin) Reset() {
+	*x = ClientQueueJoin{}
+	mi := &file_protos_game_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientQueueJoin) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientQueueJoin) ProtoMessage() {}
+
+func (x *ClientQueueJoin) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_game_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientQueueJoin.ProtoReflect.Descriptor instead.
+func (*ClientQueueJoin) Descriptor() ([]byte, []int) {
+	return file_protos_game_proto_rawDescGZIP(), []int{9}
+}
+
+type MatchMakingResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	ServerAddress string                 `protobuf:"bytes,2,opt,name=server_address,json=serverAddress,proto3" json:"server_address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MatchMakingResponse) Reset() {
+	*x = MatchMakingResponse{}
+	mi := &file_protos_game_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MatchMakingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MatchMakingResponse) ProtoMessage() {}
+
+func (x *MatchMakingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_game_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MatchMakingResponse.ProtoReflect.Descriptor instead.
+func (*MatchMakingResponse) Descriptor() ([]byte, []int) {
+	return file_protos_game_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *MatchMakingResponse) GetPlayerId() string {
+	if x != nil {
+		return x.PlayerId
+	}
+	return ""
+}
+
+func (x *MatchMakingResponse) GetServerAddress() string {
+	if x != nil {
+		return x.ServerAddress
+	}
+	return ""
+}
+
 var File_protos_game_proto protoreflect.FileDescriptor
 
 const file_protos_game_proto_rawDesc = "" +
@@ -597,9 +685,15 @@ const file_protos_game_proto_rawDesc = "" +
 	"\tgame_join\x18\x02 \x01(\v2\x16.server.ServerGameJoinH\x00R\bgameJoin\x125\n" +
 	"\tgame_exit\x18\x03 \x01(\v2\x16.server.ServerGameExitH\x00R\bgameExit\x123\n" +
 	"\bsnapshot\x18\x04 \x01(\v2\x15.server.StateSnapshotH\x00R\bsnapshotB\a\n" +
-	"\x05event2F\n" +
+	"\x05event\"\x11\n" +
+	"\x0fClientQueueJoin\"Y\n" +
+	"\x13MatchMakingResponse\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12%\n" +
+	"\x0eserver_address\x18\x02 \x01(\tR\rserverAddress2F\n" +
 	"\vGameService\x127\n" +
-	"\aConnect\x12\x13.server.ClientEvent\x1a\x13.server.ServerEvent(\x010\x01B\x15Z\x13game-backend/protosb\x06proto3"
+	"\aConnect\x12\x13.server.ClientEvent\x1a\x13.server.ServerEvent(\x010\x012U\n" +
+	"\x12MatchMakingService\x12?\n" +
+	"\aConnect\x12\x17.server.ClientQueueJoin\x1a\x1b.server.MatchMakingResponseB\x15Z\x13game-backend/protosb\x06proto3"
 
 var (
 	file_protos_game_proto_rawDescOnce sync.Once
@@ -613,17 +707,19 @@ func file_protos_game_proto_rawDescGZIP() []byte {
 	return file_protos_game_proto_rawDescData
 }
 
-var file_protos_game_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_protos_game_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_protos_game_proto_goTypes = []any{
-	(*StateIntentMessage)(nil), // 0: server.StateIntentMessage
-	(*PlayerState)(nil),        // 1: server.PlayerState
-	(*ClientGameJoin)(nil),     // 2: server.ClientGameJoin
-	(*ServerGameJoin)(nil),     // 3: server.ServerGameJoin
-	(*ServerGameExit)(nil),     // 4: server.ServerGameExit
-	(*ClientGameExit)(nil),     // 5: server.ClientGameExit
-	(*ClientEvent)(nil),        // 6: server.ClientEvent
-	(*StateSnapshot)(nil),      // 7: server.StateSnapshot
-	(*ServerEvent)(nil),        // 8: server.ServerEvent
+	(*StateIntentMessage)(nil),  // 0: server.StateIntentMessage
+	(*PlayerState)(nil),         // 1: server.PlayerState
+	(*ClientGameJoin)(nil),      // 2: server.ClientGameJoin
+	(*ServerGameJoin)(nil),      // 3: server.ServerGameJoin
+	(*ServerGameExit)(nil),      // 4: server.ServerGameExit
+	(*ClientGameExit)(nil),      // 5: server.ClientGameExit
+	(*ClientEvent)(nil),         // 6: server.ClientEvent
+	(*StateSnapshot)(nil),       // 7: server.StateSnapshot
+	(*ServerEvent)(nil),         // 8: server.ServerEvent
+	(*ClientQueueJoin)(nil),     // 9: server.ClientQueueJoin
+	(*MatchMakingResponse)(nil), // 10: server.MatchMakingResponse
 }
 var file_protos_game_proto_depIdxs = []int32{
 	1,  // 0: server.ServerGameJoin.player_state:type_name -> server.PlayerState
@@ -636,9 +732,11 @@ var file_protos_game_proto_depIdxs = []int32{
 	4,  // 7: server.ServerEvent.game_exit:type_name -> server.ServerGameExit
 	7,  // 8: server.ServerEvent.snapshot:type_name -> server.StateSnapshot
 	6,  // 9: server.GameService.Connect:input_type -> server.ClientEvent
-	8,  // 10: server.GameService.Connect:output_type -> server.ServerEvent
-	10, // [10:11] is the sub-list for method output_type
-	9,  // [9:10] is the sub-list for method input_type
+	9,  // 10: server.MatchMakingService.Connect:input_type -> server.ClientQueueJoin
+	8,  // 11: server.GameService.Connect:output_type -> server.ServerEvent
+	10, // 12: server.MatchMakingService.Connect:output_type -> server.MatchMakingResponse
+	11, // [11:13] is the sub-list for method output_type
+	9,  // [9:11] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
 	9,  // [9:9] is the sub-list for extension extendee
 	0,  // [0:9] is the sub-list for field type_name
@@ -666,9 +764,9 @@ func file_protos_game_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_protos_game_proto_rawDesc), len(file_protos_game_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_protos_game_proto_goTypes,
 		DependencyIndexes: file_protos_game_proto_depIdxs,
