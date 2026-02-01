@@ -98,7 +98,7 @@ func matchmaker() {
 				continue
 			}
 
-			nodePort, err := createNodePortService(clientset, roomID)
+			address, err := createClusterIPService(clientset, roomID)
 			if err != nil {
 				log.Printf("svc error: %v", err)
 				continue
@@ -109,8 +109,6 @@ func matchmaker() {
 				log.Printf("pod not ready: %v", err)
 				continue
 			}
-
-			address := fmt.Sprintf("%s:%d", nodeAddress(), nodePort)
 
 			room := Room{
 				address: address,

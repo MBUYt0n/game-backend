@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -65,10 +66,10 @@ func createGameServerPod(
 	return err
 }
 
-func createNodePortService(
+func createClusterIPService(
 	client *kubernetes.Clientset,
 	roomID string,
-) (int32, error) {
+) (string, error) {
 
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -76,7 +77,7 @@ func createNodePortService(
 			Namespace: "game-backend",
 		},
 		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceTypeNodePort,
+			Type: corev1.ServiceTypeClusterIP,
 			Selector: map[string]string{
 				"room": roomID,
 			},
@@ -85,22 +86,27 @@ func createNodePortService(
 					Name:       "grpc",
 					Port:       7777,
 					TargetPort: intstr.FromInt(7777),
-					NodePort:   int32(port),
 				},
 			},
 		},
 	}
-	port++
 
 	created, err := client.CoreV1().
 		Services("game-backend").
 		Create(context.Background(), svc, metav1.CreateOptions{})
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
-	return created.Spec.Ports[0].NodePort, nil
+	// DNS name inside the cluster
+	address := fmt.Sprintf(
+		"%s.game-backend.svc.cluster.local:7777",
+		created.Name,
+	)
+
+	return address, nil
 }
+
 
 func waitForPodReady(
 	client *kubernetes.Clientset,
@@ -124,8 +130,4 @@ func waitForPodReady(
 
 		time.Sleep(1 * time.Second)
 	}
-}
-
-func nodeAddress() string {
-	return "matchmaking.local"
 }

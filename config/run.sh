@@ -6,15 +6,6 @@ IMAGE2="game-backend_server:latest"
 
 minikube start
 
-minikube addons enable ingress
-
-kubectl wait \
-  --namespace ingress-nginx \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller \
-  --timeout=180s
-
-
 kubectl create namespace "$NAMESPACE"
 
 minikube image load "$IMAGE"

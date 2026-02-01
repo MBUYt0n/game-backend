@@ -14,6 +14,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+
 )
 
 type GameClient struct {
@@ -34,8 +36,8 @@ func (pp *PlayerPositions) UpdatePosition(playerId string, x, y int32, leaveOrUp
 	}
 }
 
-func NewGameClient(address string) (*GameClient, error) {
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewGameClient() (*GameClient, error) {
+	conn, err := grpc.NewClient("matchmaking.local:30080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Printf("Failed to connect to server: %v", err)
 		return nil, err
@@ -47,14 +49,22 @@ func NewGameClient(address string) (*GameClient, error) {
 	}, nil
 }
 
-func (gc *GameClient) Connect() error {
-	stream, err := gc.client.Connect(context.Background())
+func (gc *GameClient) Connect(roomID string) error {
+	md := metadata.New(map[string]string{
+		"x-room-id": roomID,
+	})
+
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+	stream, err := gc.client.Connect(ctx)
 	if err != nil {
 		return err
 	}
+
 	gc.stream = stream
 	return nil
 }
+
 
 func (gc *GameClient) SendEvent(event *protos.ClientEvent) error {
 	return gc.stream.Send(event)
@@ -133,13 +143,13 @@ func handleServerEvent(event *protos.ServerEvent, pp *PlayerPositions) {
 }
 
 func runClientCli(address string, id string) {
-	client, err := NewGameClient(address)
+	client, err := NewGameClient()
 	if err != nil {
 		log.Fatalf("Could not create client: %v", err)
 	}
 	defer client.Close()
 
-	err = client.Connect()
+	err = client.Connect(address)
 	if err != nil {
 		log.Fatalf("Could not connect to server: %v", err)
 	}
@@ -201,13 +211,13 @@ func runClientCli(address string, id string) {
 }
 
 func runClient(address string, id string) {
-	client, err := NewGameClient(address)
+	client, err := NewGameClient()
 	if err != nil {
 		log.Fatalf("Could not create client: %v", err)
 	}
 	defer client.Close()
 
-	err = client.Connect()
+	err = client.Connect(address)
 	if err != nil {
 		log.Fatalf("Could not connect to server: %v", err)
 	} else {
@@ -269,7 +279,7 @@ func runClient(address string, id string) {
 }
 
 func Matchmaking() (string, string) {
-	conn, err := grpc.NewClient("matchmaking.local:80", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("matchmaking.local:30080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Could not connect to matchmaking server: %v", err)
 	}
@@ -288,7 +298,7 @@ func Matchmaking() (string, string) {
 }
 
 func main() {
-	address, id := Matchmaking()
-	log.Printf("Assigned to server %s with player ID %s", address, id)
-	runClient(address, id)
+	roomID, id := Matchmaking()
+	log.Printf("Assigned to server %s with player ID %s", roomID, id)
+	runClient(roomID, id)
 }
