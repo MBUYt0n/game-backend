@@ -35,6 +35,7 @@ func createGameServerPod(
 			},
 		},
 		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
 			Containers: []corev1.Container{
 				{
 					Name:            "server",

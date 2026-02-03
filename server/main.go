@@ -29,6 +29,13 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	protos.RegisterGameServiceServer(grpcServer, &GameServiceServer{})
+
+	go func() {
+		<-room.Done
+		log.Println("Room ended, shutting down server")
+		grpcServer.GracefulStop()
+	}()
+
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("grpc serve error: %v", err)
 	}

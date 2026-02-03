@@ -2,6 +2,7 @@ package game_state
 
 import (
 	"game-backend/protos"
+	"log"
 	"math/rand"
 )
 
@@ -19,6 +20,7 @@ type Room struct {
 	Leave    chan *PlayerConn
 	Move     chan *protos.StateIntentMessage
 	Snapshot chan bool
+	Done     chan struct{}
 }
 
 func NewRoom() *Room {
@@ -39,6 +41,11 @@ func (room *Room) Run() {
 			event = room.addPlayerToGameState(p)
 		case p := <-room.Leave:
 			event = room.removePlayerFromGameState(p)
+			if len(room.Players) == 0 {
+				close(room.Done)
+				log.Printf("Exiting room")
+				return
+			}
 		case m := <-room.Move:
 			event = room.movePlayer(m)
 		}

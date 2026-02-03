@@ -1,21 +1,20 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"game-backend/protos"
 	"log"
 	"math/rand"
 	"os"
-	"strconv"
-	"strings"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-
 )
 
 type GameClient struct {
@@ -48,6 +47,13 @@ func NewGameClient() (*GameClient, error) {
 		client: client,
 	}, nil
 }
+
+func (gc *GameClient) CloseStream() {
+	if gc.stream != nil {
+		_ = gc.stream.CloseSend()
+	}
+}
+
 
 func (gc *GameClient) Connect(roomID string) error {
 	md := metadata.New(map[string]string{
@@ -142,141 +148,102 @@ func handleServerEvent(event *protos.ServerEvent, pp *PlayerPositions) {
 	displayGameState(pp)
 }
 
-func runClientCli(address string, id string) {
-	client, err := NewGameClient()
-	if err != nil {
-		log.Fatalf("Could not create client: %v", err)
-	}
-	defer client.Close()
-
-	err = client.Connect(address)
-	if err != nil {
-		log.Fatalf("Could not connect to server: %v", err)
-	}
-	pp := &PlayerPositions{}
-	pp.Positions = make(map[string][2]int32)
-
-	go func() {
-		for {
-			event, err := client.ReceiveEvent()
-			if err != nil {
-				log.Printf("Error receiving event: %v", err)
-				return
-			}
-			// log.Printf("Received event: %v", event)
-			handleServerEvent(event, pp)
-
-		}
-	}()
-	event := ClientGameJoin(id)
-	err = client.SendEvent(event)
-	if err != nil {
-		log.Printf("Error sending event: %v", err)
-	}
-
-	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("Enter commands: 'move <dx> <dy>' to move, 'leave' to exit")
-	for scanner.Scan() {
-		input := strings.TrimSpace(scanner.Text())
-		parts := strings.Split(input, " ")
-		if len(parts) == 0 {
-			continue
-		}
-		command := parts[0]
-		if command == "move" && len(parts) == 3 {
-			dx, errX := strconv.Atoi(parts[1])
-			dy, errY := strconv.Atoi(parts[2])
-			if errX != nil || errY != nil {
-				fmt.Println("Invalid move command. Use 'move <dx> <dy>'")
-				continue
-			}
-			event = ClientGameMove(id, int32(dx), int32(dy))
-			err = client.SendEvent(event)
-			if err != nil {
-				log.Printf("Error sending move event: %v", err)
-			}
-		} else if command == "leave" {
-			event = ClientGameLeave()
-			err = client.SendEvent(event)
-			if err != nil {
-				log.Printf("Error sending leave event: %v", err)
-			}
-			break
-		} else {
-			fmt.Println("Unknown command. Use 'move <dx> <dy>' or 'leave'")
-		}
-	}
-
-	time.Sleep(2 * time.Second)
-}
-
 func runClient(address string, id string) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	client, err := NewGameClient()
 	if err != nil {
 		log.Fatalf("Could not create client: %v", err)
 	}
+	defer client.CloseStream()
 	defer client.Close()
 
-	err = client.Connect(address)
-	if err != nil {
+	if err := client.Connect(address); err != nil {
 		log.Fatalf("Could not connect to server: %v", err)
-	} else {
-		log.Printf("Client %s connected to server at %s", id, address)
+	}
+	log.Printf("Client %s connected to %s", id, address)
+
+	pp := &PlayerPositions{Positions: make(map[string][2]int32)}
+
+	// ---- Send JOIN ----
+	if err := client.SendEvent(ClientGameJoin(id)); err != nil {
+		log.Fatalf("Join failed: %v", err)
 	}
 
-	pp := &PlayerPositions{}
-	pp.Positions = make(map[string][2]int32)
-
-	event := ClientGameJoin(id)
-	err = client.SendEvent(event)
-	if err != nil {
-		log.Printf("Error sending event: %v", err)
-	}
-
-	// Wait for join acknowledgement
-	ackReceived := false
-	for !ackReceived {
+	// ---- WAIT FOR FIRST RESPONSE (IMPORTANT) ----
+	for {
 		event, err := client.ReceiveEvent()
 		if err != nil {
 			log.Fatalf("Error receiving join ack: %v", err)
 		}
-		if joinEvent, ok := event.Event.(*protos.ServerEvent_GameJoin); ok && joinEvent.GameJoin.PlayerState.PlayerId == id {
-			log.Printf("Join acknowledged for player %s", id)
-			handleServerEvent(event, pp) // Process the ack
-			ackReceived = true
-		} else if _, ok := event.Event.(*protos.ServerEvent_Snapshot); ok {
+
+		// Accept either join ack or snapshot
+		if join, ok := event.Event.(*protos.ServerEvent_GameJoin); ok &&
+			join.GameJoin.PlayerState.PlayerId == id {
+			log.Printf("Join acknowledged for %s", id)
 			handleServerEvent(event, pp)
+			break
+		}
+
+		if _, ok := event.Event.(*protos.ServerEvent_Snapshot); ok {
+			handleServerEvent(event, pp)
+			break
 		}
 	}
 
+	var wg sync.WaitGroup
+
+	// ---- Receiver ----
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
-			event, err := client.ReceiveEvent()
-			if err != nil {
-				log.Printf("Error receiving event: %v", err)
+			select {
+			case <-ctx.Done():
 				return
+			default:
+				event, err := client.ReceiveEvent()
+				if err != nil {
+					log.Printf("Receive error: %v", err)
+					cancel()
+					return
+				}
+				handleServerEvent(event, pp)
 			}
-			handleServerEvent(event, pp)
 		}
 	}()
 
+	// ---- Sender ----
+	wg.Add(1)
 	go func() {
-		for range 1000 { // Send 1000 moves, adjust as needed
-			dx := int32(rand.Intn(3) - 1) // Random -1, 0, 1
-			dy := int32(rand.Intn(3) - 1)
-			event := ClientGameMove(id, dx, dy)
-			err := client.SendEvent(event)
-			if err != nil {
-				log.Printf("Error sending move event: %v", err)
+		defer wg.Done()
+
+		for i := 0; i < 1000; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				dx := int32(rand.Intn(3) - 1)
+				dy := int32(rand.Intn(3) - 1)
+
+				if err := client.SendEvent(ClientGameMove(id, dx, dy)); err != nil {
+					log.Printf("Send error: %v", err)
+					cancel()
+					return
+				}
+				time.Sleep(10 * time.Millisecond)
 			}
-			time.Sleep(10 * time.Millisecond)
 		}
-		event := ClientGameLeave()
-		client.SendEvent(event)
+
+		_ = client.SendEvent(ClientGameLeave())
+		cancel()
 	}()
 
-	time.Sleep(15 * time.Second) // Wait for simulation to complete
+	wg.Wait()
+	log.Printf("Client %s exited cleanly", id)
 }
+
 
 func Matchmaking() (string, string) {
 	conn, err := grpc.NewClient("matchmaking.local:30080", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -298,7 +265,23 @@ func Matchmaking() (string, string) {
 }
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	roomID, id := Matchmaking()
 	log.Printf("Assigned to server %s with player ID %s", roomID, id)
-	runClient(roomID, id)
+
+	done := make(chan struct{})
+	time.Sleep(5 * time.Second)
+	go func() {
+		runClient(roomID, id)
+		close(done)
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Println("Shutdown signal received")
+	case <-done:
+		log.Println("Client finished normally")
+	}
 }
