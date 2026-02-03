@@ -55,6 +55,8 @@ func (s *GameServiceServer) Connect(
 		Close: make(chan struct{}),
 	}
 
+	log.Printf("Player %s connected", playerConn.Id)
+
 	room.Join <- playerConn
 
 	go func() {

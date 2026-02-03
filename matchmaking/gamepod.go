@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,16 +23,15 @@ func kubeClient() (*kubernetes.Clientset, error) {
 
 func createGameServerPod(
 	client *kubernetes.Clientset,
-	roomID string,
 ) error {
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "game-server-" + roomID,
+			Name:      "game-server-1",
 			Namespace: "game-backend",
 			Labels: map[string]string{
 				"app":  "game-server",
-				"room": roomID,
+				"room": "1",
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -68,18 +66,17 @@ func createGameServerPod(
 
 func createClusterIPService(
 	client *kubernetes.Clientset,
-	roomID string,
 ) (string, error) {
 
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "game-server-" + roomID,
+			Name:      "game-server-1",
 			Namespace: "game-backend",
 		},
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
 			Selector: map[string]string{
-				"room": roomID,
+				"room": "1",
 			},
 			Ports: []corev1.ServicePort{
 				{
@@ -99,10 +96,7 @@ func createClusterIPService(
 	}
 
 	// DNS name inside the cluster
-	address := fmt.Sprintf(
-		"%s.game-backend.svc.cluster.local:7777",
-		created.Name,
-	)
+	address := created.Name
 
 	return address, nil
 }

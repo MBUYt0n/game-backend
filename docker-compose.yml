@@ -1,13 +1,13 @@
 version: '3.8'
 services:
-  # server:
-  #   build:
-  #     context: .
-  #     dockerfile: server/Dockerfile
-  #   # ports:
-  #   #   - "50051:50051"
-  #   network_mode: 
-  #     "host"
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    # ports:
+    #   - "50051:50051"
+    network_mode: 
+      "host"
 
   client:
     build:
@@ -21,12 +21,12 @@ services:
     - "matchmaking.local:192.168.49.2"
 
 
-  # matchmaking:
-  #   build:
-  #     context: .
-  #     dockerfile: matchmaking/Dockerfile
-  #   # ports:
-  #   #   - "50052:50052"
-  #   network_mode: 
-  #     "host"
+  matchmaking:
+    build:
+      context: .
+      dockerfile: matchmaking/Dockerfile
+    # ports:
+    #   - "50052:50052"
+    network_mode: 
+      "host"
 

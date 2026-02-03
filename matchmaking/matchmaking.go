@@ -86,25 +86,24 @@ func matchmaker() {
 		queue = append(queue, player)
 
 		if len(queue) >= queueSize {
-			roomID := fmt.Sprintf("%d", rand.Intn(1000000))
 			roomPlayers := queue[:queueSize]
 			queue = queue[queueSize:]
 
-			log.Printf("Creating game server for room %s", roomID)
+			log.Printf("Creating game server for room %d", 1)
 
-			err := createGameServerPod(clientset, roomID)
+			err := createGameServerPod(clientset)
 			if err != nil {
 				log.Printf("pod error: %v", err)
 				continue
 			}
 
-			address, err := createClusterIPService(clientset, roomID)
+			address, err := createClusterIPService(clientset)
 			if err != nil {
 				log.Printf("svc error: %v", err)
 				continue
 			}
 
-			err = waitForPodReady(clientset, "game-server-"+roomID)
+			err = waitForPodReady(clientset, "game-server-1")
 			if err != nil {
 				log.Printf("pod not ready: %v", err)
 				continue

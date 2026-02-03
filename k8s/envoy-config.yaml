@@ -73,5 +73,5 @@ data:
                   - endpoint:
                       address:
                         socket_address:
-                          address: game-server-placeholder.game-backend.svc.cluster.local
+                          address: game-server-1.game-backend.svc.cluster.local
                           port_value: 7777
