@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -124,5 +125,47 @@ func waitForPodReady(
 		}
 
 		time.Sleep(1 * time.Second)
+	}
+}
+
+func watchAndCleanupGameServer(
+	client *kubernetes.Clientset,
+	podName string,
+	serviceName string,
+) {
+
+	watcher, err := client.CoreV1().
+		Pods("game-backend").
+		Watch(context.Background(), metav1.ListOptions{
+			FieldSelector: "metadata.name=" + podName,
+		})
+	if err != nil {
+		log.Printf("watch error: %v", err)
+		return
+	}
+
+	for event := range watcher.ResultChan() {
+		pod, ok := event.Object.(*corev1.Pod)
+		if !ok {
+			continue
+		}
+
+		switch pod.Status.Phase {
+		case corev1.PodSucceeded, corev1.PodFailed:
+			log.Printf("Pod %s finished (%s), cleaning up", podName, pod.Status.Phase)
+
+			// Delete Pod
+			_ = client.CoreV1().
+				Pods("game-backend").
+				Delete(context.Background(), podName, metav1.DeleteOptions{})
+
+			// Delete Service
+			_ = client.CoreV1().
+				Services("game-backend").
+				Delete(context.Background(), serviceName, metav1.DeleteOptions{})
+
+			watcher.Stop()
+			return
+		}
 	}
 }

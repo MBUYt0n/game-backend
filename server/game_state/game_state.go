@@ -30,6 +30,7 @@ func NewRoom() *Room {
 		Join:    make(chan *PlayerConn, 2),
 		Leave:   make(chan *PlayerConn, 2),
 		Move:    make(chan *protos.StateIntentMessage, 2),
+		Done:	make(chan struct{}),
 	}
 }
 

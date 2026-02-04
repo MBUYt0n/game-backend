@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+
 	"google.golang.org/grpc"
 )
 
@@ -109,6 +110,7 @@ func matchmaker() {
 				continue
 			}
 
+			go watchAndCleanupGameServer(clientset, "game-server-1", "game-server-1")
 			room := Room{
 				address: address,
 			}
