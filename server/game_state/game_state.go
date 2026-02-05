@@ -6,6 +6,8 @@ import (
 	"math/rand"
 )
 
+var boundary int32 = 200
+
 type PlayerConn struct {
 	Id    string
 	Send  chan *protos.ServerEvent
@@ -96,8 +98,8 @@ func (room *Room) addPlayerToGameState(playerConn *PlayerConn) *protos.ServerEve
 	room.Players[playerConn.Id] = playerConn
 	playerState := protos.PlayerState{
 		PlayerId: playerConn.Id,
-		X:        int32(rand.Intn(100)),
-		Y:        int32(rand.Intn(100)),
+		X:        int32(rand.Intn(int(boundary - 1))),
+		Y:        int32(rand.Intn(int(boundary - 1))),
 	}
 	room.State[playerConn.Id] = &playerState
 	snapshot := getGameState(room)
@@ -134,6 +136,12 @@ func (room *Room) removePlayerFromGameState(playerConn *PlayerConn) *protos.Serv
 
 func (room *Room) movePlayer(moveIntent *protos.StateIntentMessage) *protos.ServerEvent {
 	playerState := room.State[moveIntent.PlayerId]
+	if playerState.X + moveIntent.Dx < 0 || playerState.X+moveIntent.Dx >= boundary {
+		moveIntent.Dx = 0
+	}
+	if playerState.Y + moveIntent.Dy < 0 || playerState.Y+moveIntent.Dy >= boundary {
+		moveIntent.Dy = 0
+	}
 	playerState.X += moveIntent.Dx
 	playerState.Y += moveIntent.Dy
 	moveEvent := protos.PlayerState{
