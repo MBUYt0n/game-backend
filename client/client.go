@@ -12,10 +12,27 @@ import (
 	"syscall"
 	"time"
 
+	// >>> ADDED
+	"flag"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
+
+// >>> ADDED
+var dropAfter time.Duration
+
+// >>> ADDED
+func init() {
+	flag.DurationVar(
+		&dropAfter,
+		"drop-after",
+		0,
+		"simulate network drop after duration (e.g. 2s, 500ms)",
+	)
+	flag.Parse()
+}
 
 type GameClient struct {
 	conn   *grpc.ClientConn
@@ -54,7 +71,6 @@ func (gc *GameClient) CloseStream() {
 	}
 }
 
-
 func (gc *GameClient) Connect(roomID string) error {
 	md := metadata.New(map[string]string{
 		"x-room-id": roomID,
@@ -70,7 +86,6 @@ func (gc *GameClient) Connect(roomID string) error {
 	gc.stream = stream
 	return nil
 }
-
 
 func (gc *GameClient) SendEvent(event *protos.ClientEvent) error {
 	return gc.stream.Send(event)
@@ -164,21 +179,30 @@ func runClient(address string, id string) {
 	}
 	log.Printf("Client %s connected to %s", id, address)
 
+	// >>> ADDED — network drop simulation
+	if dropAfter > 0 {
+		go func() {
+			time.Sleep(dropAfter)
+			log.Printf("💥 Simulating network drop for client %s", id)
+
+			// Hard close: no GameExit, no CloseSend
+			_ = client.conn.Close()
+			cancel()
+		}()
+	}
+
 	pp := &PlayerPositions{Positions: make(map[string][2]int32)}
 
-	// ---- Send JOIN ----
 	if err := client.SendEvent(ClientGameJoin(id)); err != nil {
 		log.Fatalf("Join failed: %v", err)
 	}
 
-	// ---- WAIT FOR FIRST RESPONSE (IMPORTANT) ----
 	for {
 		event, err := client.ReceiveEvent()
 		if err != nil {
 			log.Fatalf("Error receiving join ack: %v", err)
 		}
 
-		// Accept either join ack or snapshot
 		if join, ok := event.Event.(*protos.ServerEvent_GameJoin); ok &&
 			join.GameJoin.PlayerState.PlayerId == id {
 			log.Printf("Join acknowledged for %s", id)
@@ -194,7 +218,6 @@ func runClient(address string, id string) {
 
 	var wg sync.WaitGroup
 
-	// ---- Receiver ----
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -214,12 +237,11 @@ func runClient(address string, id string) {
 		}
 	}()
 
-	// ---- Sender ----
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			select {
 			case <-ctx.Done():
 				return
@@ -236,14 +258,15 @@ func runClient(address string, id string) {
 			}
 		}
 
-		_ = client.SendEvent(ClientGameLeave())
+		if dropAfter == 0 {
+			_ = client.SendEvent(ClientGameLeave())
+		}
 		cancel()
 	}()
 
 	wg.Wait()
 	log.Printf("Client %s exited cleanly", id)
 }
-
 
 func Matchmaking() (string, string) {
 	conn, err := grpc.NewClient("matchmaking.local:30080", grpc.WithTransportCredentials(insecure.NewCredentials()))

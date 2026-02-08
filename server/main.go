@@ -53,20 +53,41 @@ func (s *GameServiceServer) Connect(
 	join := firstEvent.GetGameJoin()
 	if join == nil {
 		return status.Error(codes.InvalidArgument, "first event must be GameJoin")
-
 	}
 
+	playerId := join.PlayerId
+
 	playerConn := &game_state.PlayerConn{
-		Id:    join.PlayerId,
+		Id:    playerId,
 		Send:  make(chan *protos.ServerEvent, 16),
 		Close: make(chan struct{}),
 	}
 
-	log.Printf("Player %s connected", playerConn.Id)
+	log.Printf("Player %s connected", playerId)
 
-	room.Join <- playerConn
+	if existing, ok := room.Players[playerId]; ok {
+		close(existing.Close)
+		delete(room.Players, playerId)
+
+		room.Players[playerId] = playerConn
+
+		snapshot := game_state.GetGameState(room)
+		playerConn.Send <- snapshot
+	} else {
+		room.Join <- playerConn
+	}
+
+	ctx := stream.Context()
+	go func() {
+		<-ctx.Done()
+		room.Leave <- playerConn
+	}()
 
 	go func() {
+		defer func() {
+			room.Leave <- playerConn
+		}()
+
 		for {
 			select {
 			case event := <-playerConn.Send:

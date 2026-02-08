@@ -59,7 +59,7 @@ func (room *Room) Run() {
 	}
 }
 
-func getGameState(room *Room) *protos.ServerEvent {
+func GetGameState(room *Room) *protos.ServerEvent {
 
 	players := make([]*protos.PlayerState, 0, len(room.State))
 	for _, ps := range room.State {
@@ -102,7 +102,7 @@ func (room *Room) addPlayerToGameState(playerConn *PlayerConn) *protos.ServerEve
 		Y:        int32(rand.Intn(int(boundary - 1))),
 	}
 	room.State[playerConn.Id] = &playerState
-	snapshot := getGameState(room)
+	snapshot := GetGameState(room)
 	select {
 	case playerConn.Send <- snapshot:
 	default:
